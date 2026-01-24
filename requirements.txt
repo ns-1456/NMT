@@ -1,28 +1,11 @@
-# Core deep learning framework
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0
+torch
+transformers
+datasets
+tokenizers
+pandas
+scikit-learn
+accelerate
+gdown
+tqdm
+matplotlib
 
-# Transformers and tokenization
-transformers>=4.30.0
-tokenizers>=0.13.0
-sentencepiece>=0.1.99
-
-# Data handling
-datasets>=2.14.0
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Evaluation
-sacrebleu>=2.3.0
-
-# Configuration
-pyyaml>=6.0
-
-# Utilities
-tqdm>=4.65.0
-wandb>=0.15.0
-
-# Additional utilities
-requests>=2.31.0
-urllib3>=2.0.0
