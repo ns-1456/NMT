@@ -15,6 +15,7 @@ Requirements implemented (per prompt):
 from __future__ import annotations
 
 import argparse
+import inspect
 from pathlib import Path
 
 import torch
@@ -115,25 +116,44 @@ def main() -> int:
         padding=True,
     )
 
-    training_args = Seq2SeqTrainingArguments(
-        output_dir=str(args.output_dir),
-        learning_rate=1e-3,
-        per_device_train_batch_size=int(args.per_device_batch_size),
-        per_device_eval_batch_size=int(args.per_device_batch_size),
-        gradient_accumulation_steps=int(args.gradient_accumulation_steps),
-        num_train_epochs=float(args.num_train_epochs),
-        weight_decay=0.01,
-        warmup_steps=2000,
-        fp16=True,
-        save_total_limit=2,
-        # Reasonable defaults (not specified, but helps Trainer run)
-        evaluation_strategy="epoch",
-        logging_strategy="epoch",
-        save_strategy="epoch",
-        predict_with_generate=False,
-        report_to=[],
-        remove_unused_columns=False,
-    )
+    # NOTE: Transformers versions differ on TrainingArguments field names.
+    # Example: some versions use `eval_strategy` instead of `evaluation_strategy`.
+    # To keep Colab reproducible across versions, we filter/migrate kwargs based on
+    # Seq2SeqTrainingArguments.__init__ signature.
+    args_kwargs = {
+        "output_dir": str(args.output_dir),
+        "learning_rate": 1e-3,
+        "per_device_train_batch_size": int(args.per_device_batch_size),
+        "per_device_eval_batch_size": int(args.per_device_batch_size),
+        "gradient_accumulation_steps": int(args.gradient_accumulation_steps),
+        "num_train_epochs": float(args.num_train_epochs),
+        "weight_decay": 0.01,
+        "warmup_steps": 2000,
+        "fp16": True,
+        "save_total_limit": 2,
+        # Reasonable defaults (not specified in prompt, but helps Trainer run)
+        "evaluation_strategy": "epoch",
+        "logging_strategy": "epoch",
+        "save_strategy": "epoch",
+        "predict_with_generate": False,
+        "report_to": [],
+        "remove_unused_columns": False,
+    }
+
+    sig = inspect.signature(Seq2SeqTrainingArguments.__init__)
+    supported = set(sig.parameters.keys())
+    supported.discard("self")
+
+    # Migrate renamed fields when needed.
+    if "evaluation_strategy" in args_kwargs and "evaluation_strategy" not in supported:
+        if "eval_strategy" in supported:
+            args_kwargs["eval_strategy"] = args_kwargs.pop("evaluation_strategy")
+        else:
+            args_kwargs.pop("evaluation_strategy", None)
+
+    # Drop unsupported kwargs (keeps us compatible with older/newer versions).
+    args_kwargs = {k: v for k, v in args_kwargs.items() if k in supported}
+    training_args = Seq2SeqTrainingArguments(**args_kwargs)
 
     trainer = Seq2SeqTrainer(
         model=model,
