@@ -135,7 +135,13 @@ def _has_expected_contents(xlcost_root: Path) -> bool:
     Return True if the extracted XLCoST_data folder looks complete enough
     for the requested tasks (i.e., contains snippet/program pair dirs).
     """
-    return (xlcost_root / "pair_data_tok_1").is_dir() or (xlcost_root / "pair_data_tok_full").is_dir()
+    # Some releases nest translation data under XLCoST_data/generation/
+    return (
+        (xlcost_root / "pair_data_tok_1").is_dir()
+        or (xlcost_root / "pair_data_tok_full").is_dir()
+        or (xlcost_root / "generation" / "pair_data_tok_1").is_dir()
+        or (xlcost_root / "generation" / "pair_data_tok_full").is_dir()
+    )
 
 
 def _find_xlcost_root(raw_dir: Path) -> Path:
@@ -207,13 +213,33 @@ def _find_xlcost_root(raw_dir: Path) -> Path:
 
 
 def _pair_dir(xlcost_root: Path, level: Literal["snippet", "program"]) -> Path:
+    """
+    Return the directory that contains language-pair folders for the requested level.
+
+    Depending on the XLCoST release, this may be either:
+      XLCoST_data/pair_data_tok_1
+    or:
+      XLCoST_data/generation/pair_data_tok_1
+    (and similarly for pair_data_tok_full).
+    """
     if level == "snippet":
-        base = xlcost_root / "pair_data_tok_1"
+        candidates = [
+            xlcost_root / "pair_data_tok_1",
+            xlcost_root / "generation" / "pair_data_tok_1",
+        ]
     else:
-        base = xlcost_root / "pair_data_tok_full"
-    if not base.is_dir():
-        raise FileNotFoundError(f"Missing expected directory: {base}")
-    return base
+        candidates = [
+            xlcost_root / "pair_data_tok_full",
+            xlcost_root / "generation" / "pair_data_tok_full",
+        ]
+
+    for base in candidates:
+        if base.is_dir():
+            return base
+
+    raise FileNotFoundError(
+        "Missing expected directory. Tried: " + ", ".join(str(c) for c in candidates)
+    )
 
 
 def _detect_lang_pair_dir(
