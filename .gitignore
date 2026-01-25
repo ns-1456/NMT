@@ -4,16 +4,19 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Data & artifacts (regeneratable / large)
-data/raw/
-data/processed/
-custom_tokenizer/
+data/raw/*
+data/processed/*
+custom_tokenizer/*
 t5_nano_checkpoints/
 final_model/
 *.zip
 
 # If using Git LFS for prepared artifacts, allowlist these paths:
+!data/raw/
 !data/raw/XLCoST_data.zip
+!data/processed/
 !data/processed/**
+!custom_tokenizer/
 !custom_tokenizer/**
 
 # But keep extracted XLCoST_data (very large) out of git:
