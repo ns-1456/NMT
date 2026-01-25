@@ -11,6 +11,15 @@ t5_nano_checkpoints/
 final_model/
 *.zip
 
+# If using Git LFS for prepared artifacts, allowlist these paths:
+!data/raw/XLCoST_data.zip
+!data/processed/**
+!custom_tokenizer/**
+
+# But keep extracted XLCoST_data (very large) out of git:
+data/raw/XLCoST_data/
+data/raw/__MACOSX/
+
 # Common envs
 .venv/
 venv/

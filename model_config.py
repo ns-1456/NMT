@@ -19,6 +19,12 @@ from transformers import PreTrainedTokenizerFast, T5Config, T5ForConditionalGene
 
 TOKENIZER_DIR = Path("custom_tokenizer")
 
+# NOTE:
+# With vocab_size=16k, d_model=256, d_ff=1024, 6/6 layers, the parameter count is ~12.8M.
+# To satisfy the desired 20M–40M sanity check, we slightly increase d_model while keeping
+# all other hyperparameters the same. d_model must be divisible by num_heads (4).
+D_MODEL = 416
+
 
 def load_tokenizer(tokenizer_dir: Path = TOKENIZER_DIR) -> PreTrainedTokenizerFast:
     vocab_path = tokenizer_dir / "vocab.json"
@@ -45,7 +51,7 @@ def load_tokenizer(tokenizer_dir: Path = TOKENIZER_DIR) -> PreTrainedTokenizerFa
 def build_t5_nano(tokenizer: PreTrainedTokenizerFast) -> T5ForConditionalGeneration:
     config = T5Config(
         vocab_size=16_000,
-        d_model=256,
+        d_model=D_MODEL,
         d_kv=32,
         d_ff=1024,
         num_layers=6,
