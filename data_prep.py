@@ -130,6 +130,14 @@ def _extract_zip(zip_path: Path, raw_dir: Path) -> None:
         zf.extractall(raw_dir)
 
 
+def _has_expected_contents(xlcost_root: Path) -> bool:
+    """
+    Return True if the extracted XLCoST_data folder looks complete enough
+    for the requested tasks (i.e., contains snippet/program pair dirs).
+    """
+    return (xlcost_root / "pair_data_tok_1").is_dir() or (xlcost_root / "pair_data_tok_full").is_dir()
+
+
 def _find_xlcost_root(raw_dir: Path) -> Path:
     """
     Return path to the extracted XLCoST_data directory.
@@ -304,11 +312,36 @@ def main() -> int:
                 ) from e
 
     if not args.skip_extract:
-        # If already extracted, skip re-extract to avoid wasting time.
+        # If already extracted, skip re-extract to avoid wasting time,
+        # but verify the expected subdirectories exist (Colab can end up with partial extracts).
         try:
             xlcost_root = _find_xlcost_root(raw_dir)
-            print(f"[data_prep] Found existing extracted dir at {xlcost_root}; skipping extract")
+            if _has_expected_contents(xlcost_root):
+                print(
+                    f"[data_prep] Found existing extracted dir at {xlcost_root}; skipping extract"
+                )
+            else:
+                print(
+                    f"[data_prep] Found extracted dir at {xlcost_root} but missing expected contents; re-extracting"
+                )
+                shutil.rmtree(xlcost_root, ignore_errors=True)
+                # If the downloaded \"zip\" isn't actually a zip (e.g., HTML), delete and re-download.
+                if not zipfile.is_zipfile(zip_path):
+                    print(f\"[data_prep] {zip_path} is not a valid zip; deleting and re-downloading\")
+                    try:
+                        zip_path.unlink()
+                    except FileNotFoundError:
+                        pass
+                    _download_xlcost_zip(zip_path=zip_path, gdrive_id=args.gdrive_id)
+                _extract_zip(zip_path=zip_path, raw_dir=raw_dir)
         except FileNotFoundError:
+            if not zipfile.is_zipfile(zip_path):
+                print(f\"[data_prep] {zip_path} is not a valid zip; deleting and re-downloading\")
+                try:
+                    zip_path.unlink()
+                except FileNotFoundError:
+                    pass
+                _download_xlcost_zip(zip_path=zip_path, gdrive_id=args.gdrive_id)
             _extract_zip(zip_path=zip_path, raw_dir=raw_dir)
     else:
         print("[data_prep] Skipping extract")
