@@ -186,7 +186,7 @@ def _find_xlcost_root(raw_dir: Path) -> Path:
         if nested.is_dir() and _has_expected_contents(nested):
             return nested
 
-    # Last resort: shallow directory walk looking for pair_data_tok_1 / pair_data_tok_full.
+    # Last resort: shallow directory walk looking for translation pair dirs.
     # This covers cases like:
     #   data/raw/g4g/XLCoST_data/pair_data_tok_1/...
     #   data/raw/XLCoST_data/data/XLCoST_data/pair_data_tok_1/...
@@ -202,8 +202,14 @@ def _find_xlcost_root(raw_dir: Path) -> Path:
             dirs[:] = []
             continue
 
+        # Direct layout
         if "pair_data_tok_1" in dirs or "pair_data_tok_full" in dirs:
             return Path(root)
+        # Nested under generation/
+        if "generation" in dirs:
+            gen = Path(root) / "generation"
+            if (gen / "pair_data_tok_1").is_dir() or (gen / "pair_data_tok_full").is_dir():
+                return Path(root)
 
     # Do NOT fall back to arbitrary XLCoST_data dirs (e.g., __MACOSX). Fail loudly.
 
@@ -398,7 +404,9 @@ def main() -> int:
                 shutil.rmtree(xlcost_root, ignore_errors=True)
                 # If the downloaded \"zip\" isn't actually a zip (e.g., HTML), delete and re-download.
                 if not zipfile.is_zipfile(zip_path):
-                    print(f\"[data_prep] {zip_path} is not a valid zip; deleting and re-downloading\")
+                    print(
+                        f"[data_prep] {zip_path} is not a valid zip; deleting and re-downloading"
+                    )
                     try:
                         zip_path.unlink()
                     except FileNotFoundError:
@@ -407,7 +415,9 @@ def main() -> int:
                 _extract_zip(zip_path=zip_path, raw_dir=raw_dir)
         except FileNotFoundError:
             if not zipfile.is_zipfile(zip_path):
-                print(f\"[data_prep] {zip_path} is not a valid zip; deleting and re-downloading\")
+                print(
+                    f"[data_prep] {zip_path} is not a valid zip; deleting and re-downloading"
+                )
                 try:
                     zip_path.unlink()
                 except FileNotFoundError:
