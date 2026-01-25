@@ -180,6 +180,25 @@ def _find_xlcost_root(raw_dir: Path) -> Path:
         if nested.is_dir() and _has_expected_contents(nested):
             return nested
 
+    # Last resort: shallow directory walk looking for pair_data_tok_1 / pair_data_tok_full.
+    # This covers cases like:
+    #   data/raw/g4g/XLCoST_data/pair_data_tok_1/...
+    #   data/raw/XLCoST_data/data/XLCoST_data/pair_data_tok_1/...
+    import os
+
+    max_depth = 6
+    for root, dirs, _files in os.walk(raw_dir):
+        # Prune __MACOSX early
+        dirs[:] = [d for d in dirs if d != "__MACOSX"]
+
+        rel_parts = Path(root).relative_to(raw_dir).parts
+        if len(rel_parts) > max_depth:
+            dirs[:] = []
+            continue
+
+        if "pair_data_tok_1" in dirs or "pair_data_tok_full" in dirs:
+            return Path(root)
+
     # Do NOT fall back to arbitrary XLCoST_data dirs (e.g., __MACOSX). Fail loudly.
 
     raise FileNotFoundError(
