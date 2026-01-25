@@ -64,6 +64,12 @@ def main() -> int:
     ap.add_argument("--max_source_len", type=int, default=256)
     ap.add_argument("--max_target_len", type=int, default=512)
     ap.add_argument("--per_device_batch_size", type=int, default=32)
+    ap.add_argument(
+        "--gradient_accumulation_steps",
+        type=int,
+        default=1,
+        help="Accumulate gradients to simulate a larger batch size.",
+    )
     ap.add_argument("--num_train_epochs", type=int, default=30)
     args = ap.parse_args()
 
@@ -96,6 +102,7 @@ def main() -> int:
         learning_rate=1e-3,
         per_device_train_batch_size=int(args.per_device_batch_size),
         per_device_eval_batch_size=int(args.per_device_batch_size),
+        gradient_accumulation_steps=int(args.gradient_accumulation_steps),
         num_train_epochs=float(args.num_train_epochs),
         weight_decay=0.01,
         warmup_steps=2000,
