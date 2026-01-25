@@ -137,7 +137,7 @@ def main() -> int:
         "save_strategy": "epoch",
         "predict_with_generate": False,
         "report_to": [],
-        "remove_unused_columns": False,
+        "remove_unused_columns": True,  # Let Trainer drop fields T5 doesn't use (e.g. token_type_ids)
     }
 
     sig = inspect.signature(Seq2SeqTrainingArguments.__init__)
