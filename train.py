@@ -21,6 +21,7 @@ from pathlib import Path
 import torch
 from transformers import (
     DataCollatorForSeq2Seq,
+    EarlyStoppingCallback,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
 )
@@ -122,15 +123,19 @@ def main() -> int:
     # Seq2SeqTrainingArguments.__init__ signature.
     args_kwargs = {
         "output_dir": str(args.output_dir),
-        "learning_rate": 1e-3,
+        "learning_rate": 5e-5,  # Fixed: 1e-3 was too high, caused NaN loss
         "per_device_train_batch_size": int(args.per_device_batch_size),
         "per_device_eval_batch_size": int(args.per_device_batch_size),
         "gradient_accumulation_steps": int(args.gradient_accumulation_steps),
         "num_train_epochs": float(args.num_train_epochs),
         "weight_decay": 0.01,
-        "warmup_steps": 2000,
-        "fp16": True,
-        "save_total_limit": 2,
+        "warmup_steps": 500,  # Reduced warmup for smaller dataset
+        "fp16": torch.cuda.is_available(),  # Only use fp16 if GPU available
+        "save_total_limit": 3,
+        "max_grad_norm": 1.0,  # Gradient clipping to prevent exploding gradients
+        "load_best_model_at_end": True,  # Early stopping support
+        "metric_for_best_model": "eval_loss",
+        "greater_is_better": False,
         # Reasonable defaults (not specified in prompt, but helps Trainer run)
         "evaluation_strategy": "epoch",
         "logging_strategy": "epoch",
@@ -155,6 +160,9 @@ def main() -> int:
     args_kwargs = {k: v for k, v in args_kwargs.items() if k in supported}
     training_args = Seq2SeqTrainingArguments(**args_kwargs)
 
+    # Early stopping: stop if eval_loss doesn't improve for 3 epochs
+    early_stopping = EarlyStoppingCallback(early_stopping_patience=3)
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
@@ -162,6 +170,7 @@ def main() -> int:
         eval_dataset=tokenized.get("validation"),
         tokenizer=tokenizer,
         data_collator=data_collator,
+        callbacks=[early_stopping],
     )
 
     trainer.train()
