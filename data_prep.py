@@ -140,21 +140,47 @@ def _has_expected_contents(xlcost_root: Path) -> bool:
 
 def _find_xlcost_root(raw_dir: Path) -> Path:
     """
-    Return path to the extracted XLCoST_data directory.
-    We avoid a full os.walk (the extraction can be large); instead, try common
-    locations and a shallow scan.
-    """
-    direct = raw_dir / "XLCoST_data"
-    if direct.is_dir():
-        return direct
+    Return path to the extracted XLCoST_data directory that contains the
+    expected subfolders (pair_data_tok_1 / pair_data_tok_full).
 
-    # Sometimes the zip contains a parent folder, e.g. raw_dir/<something>/XLCoST_data
+    The Google Drive zip sometimes extracts with an extra nesting level, e.g.:
+      data/raw/XLCoST_data/XLCoST_data/pair_data_tok_1/...
+    so we probe a few shallow candidate locations.
+    """
+    candidates: list[Path] = []
+
+    # Common: raw_dir/XLCoST_data
+    candidates.append(raw_dir / "XLCoST_data")
+
+    # Common: raw_dir/<something>/XLCoST_data
     for child in raw_dir.iterdir():
-        if not child.is_dir():
+        # Ignore macOS resource forks directory from zip extraction
+        if child.is_dir() and child.name != "__MACOSX":
+            candidates.append(child / "XLCoST_data")
+
+    # Extra nesting: raw_dir/XLCoST_data/XLCoST_data
+    candidates.append(raw_dir / "XLCoST_data" / "XLCoST_data")
+
+    # One more shallow level: raw_dir/<something>/XLCoST_data/XLCoST_data
+    for child in raw_dir.iterdir():
+        if child.is_dir() and child.name != "__MACOSX":
+            candidates.append(child / "XLCoST_data" / "XLCoST_data")
+
+    # First pass: return the first candidate that has expected contents.
+    for cand in candidates:
+        if cand.is_dir() and _has_expected_contents(cand):
+            return cand
+
+    # Second pass: if we found an XLCoST_data dir but it doesn't have expected
+    # contents, check if it contains a nested XLCoST_data with expected contents.
+    for cand in candidates:
+        if not cand.is_dir():
             continue
-        candidate = child / "XLCoST_data"
-        if candidate.is_dir():
-            return candidate
+        nested = cand / "XLCoST_data"
+        if nested.is_dir() and _has_expected_contents(nested):
+            return nested
+
+    # Do NOT fall back to arbitrary XLCoST_data dirs (e.g., __MACOSX). Fail loudly.
 
     raise FileNotFoundError(
         f"Could not find extracted XLCoST_data directory under {raw_dir}"
