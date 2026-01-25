@@ -54,7 +54,12 @@ def translate(python_code_str: str) -> str:
     if not text.startswith(TASK_PREFIX):
         text = TASK_PREFIX + text
 
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
+    # Avoid fast-tokenizer truncation issues in some environments by manually truncating.
+    inputs = tokenizer(text, return_tensors="pt", truncation=False)
+    if inputs.get("input_ids") is not None and inputs["input_ids"].shape[-1] > 256:
+        inputs["input_ids"] = inputs["input_ids"][:, :256]
+        if "attention_mask" in inputs:
+            inputs["attention_mask"] = inputs["attention_mask"][:, :256]
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     with torch.no_grad():

@@ -41,19 +41,37 @@ def preprocess_function(examples, tokenizer, max_source_len: int, max_target_len
         for s in sources
     ]
 
+    # NOTE: Some Colab environments have a tokenizers/transformers mismatch where
+    # fast-tokenizer truncation fails with:
+    #   TypeError: BaseTokenizer.enable_truncation() got an unexpected keyword argument 'direction'
+    # To be robust, we encode without truncation and manually truncate.
+
     model_inputs = tokenizer(
         sources,
-        max_length=max_source_len,
-        truncation=True,
+        truncation=False,
+        padding=False,
     )
 
-    labels = tokenizer(
+    if "attention_mask" not in model_inputs:
+        model_inputs["attention_mask"] = [
+            [1] * len(ids) for ids in model_inputs["input_ids"]
+        ]
+
+    input_ids = []
+    attention_mask = []
+    for ids, mask in zip(model_inputs["input_ids"], model_inputs["attention_mask"]):
+        input_ids.append(ids[:max_source_len])
+        attention_mask.append(mask[:max_source_len])
+    model_inputs["input_ids"] = input_ids
+    model_inputs["attention_mask"] = attention_mask
+
+    label_enc = tokenizer(
         text_target=targets,
-        max_length=max_target_len,
-        truncation=True,
+        truncation=False,
+        padding=False,
     )
-
-    model_inputs["labels"] = labels["input_ids"]
+    labels = [ids[:max_target_len] for ids in label_enc["input_ids"]]
+    model_inputs["labels"] = labels
     return model_inputs
 
 
