@@ -43,7 +43,18 @@ inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
 inputs = {k: v.to(device) for k, v in inputs.items() if k != "token_type_ids"}
 
 with torch.no_grad():
-    out_ids = model.generate(**inputs, num_beams=4, max_length=512)
+    out_ids = model.generate(
+        **inputs,
+        num_beams=4,
+        max_length=256,
+        min_length=10,
+        repetition_penalty=1.5,
+        length_penalty=1.0,
+        early_stopping=True,
+        eos_token_id=tokenizer.eos_token_id or 2,
+        pad_token_id=tokenizer.pad_token_id or 1,
+        no_repeat_ngram_size=3,
+    )
 
 cpp_output = tokenizer.decode(out_ids[0], skip_special_tokens=True)
 

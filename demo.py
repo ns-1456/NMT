@@ -58,12 +58,19 @@ def translate(model, tokenizer, device, python_code: str) -> str:
     # Filter out token_type_ids (T5 doesn't use it)
     inputs = {k: v.to(device) for k, v in inputs.items() if k != "token_type_ids"}
     
-    # Generate
+    # Generate with improved parameters to prevent repetition
     with torch.no_grad():
         out_ids = model.generate(
             **inputs,
             num_beams=4,
-            max_length=512,
+            max_length=256,  # Reduced from 512
+            min_length=10,    # Minimum output length
+            repetition_penalty=1.5,  # Penalize repetition
+            length_penalty=1.0,     # Neutral length penalty
+            early_stopping=True,    # Stop when EOS is found
+            eos_token_id=tokenizer.eos_token_id or 2,  # Stop token
+            pad_token_id=tokenizer.pad_token_id or 1,
+            no_repeat_ngram_size=3,  # Prevent 3-gram repetition
         )
     
     decoded = tokenizer.decode(out_ids[0], skip_special_tokens=True)

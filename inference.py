@@ -68,7 +68,14 @@ def translate(python_code_str: str) -> str:
         out_ids = model.generate(
             **inputs,
             num_beams=4,
-            max_length=512,
+            max_length=256,  # Reduced from 512
+            min_length=10,    # Minimum output length
+            repetition_penalty=1.5,  # Penalize repetition
+            length_penalty=1.0,     # Neutral length penalty
+            early_stopping=True,    # Stop when EOS is found
+            eos_token_id=tokenizer.eos_token_id or 2,  # Stop token
+            pad_token_id=tokenizer.pad_token_id or 1,
+            no_repeat_ngram_size=3,  # Prevent 3-gram repetition
         )
 
     decoded = tokenizer.decode(out_ids[0], skip_special_tokens=True)
