@@ -7,7 +7,26 @@ Loads model + tokenizer from ./final_model and runs beam search generation.
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
+
+# Force transformers backend to PyTorch explicitly (avoid TensorFlow backend issues)
+# Must be set before importing transformers
+os.environ["TRANSFORMERS_BACKEND"] = "pt"
+# Prevent TensorFlow from being auto-detected/imported
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
+# Workaround: Prevent TensorFlow from being imported by transformers
+# This is needed if TensorFlow is installed but not properly configured
+class TensorFlowBlocker:
+    """Prevent TensorFlow import to avoid backend conflicts."""
+    def __getattr__(self, name):
+        raise ImportError("TensorFlow is blocked. Use PyTorch backend instead.")
+
+# Block TensorFlow before transformers tries to import it
+if "tensorflow" not in sys.modules:
+    sys.modules["tensorflow"] = TensorFlowBlocker()
 
 import torch
 from transformers import AutoTokenizer, T5ForConditionalGeneration
@@ -67,18 +86,27 @@ def translate(python_code_str: str) -> str:
     with torch.no_grad():
         out_ids = model.generate(
             **inputs,
-            num_beams=4,
-            max_length=256,  # Reduced from 512
+            num_beams=5,  # Increased beams for better quality
+            max_length=384,  # Increased to allow longer outputs (trained with max_target_len=512)
             min_length=10,    # Minimum output length
-            repetition_penalty=1.5,  # Penalize repetition
-            length_penalty=1.0,     # Neutral length penalty
+            repetition_penalty=2.0,  # Increased penalty to strongly penalize repetition
+            length_penalty=1.2,     # Slight preference for longer sequences
             early_stopping=True,    # Stop when EOS is found
             eos_token_id=tokenizer.eos_token_id or 2,  # Stop token
             pad_token_id=tokenizer.pad_token_id or 1,
-            no_repeat_ngram_size=3,  # Prevent 3-gram repetition
+            no_repeat_ngram_size=4,  # Prevent 4-gram repetition (more aggressive)
+            do_sample=False,  # Use deterministic beam search
+            num_return_sequences=1,  # Return only the best sequence
         )
 
-    decoded = tokenizer.decode(out_ids[0], skip_special_tokens=True)
+    # Manually truncate at EOS token as a safeguard (even though early_stopping should handle this)
+    eos_id = tokenizer.eos_token_id or 2
+    output_ids = out_ids[0].cpu().tolist()
+    if eos_id in output_ids:
+        eos_idx = output_ids.index(eos_id)
+        output_ids = output_ids[:eos_idx]
+    
+    decoded = tokenizer.decode(output_ids, skip_special_tokens=True)
     print(decoded)
     return decoded
 

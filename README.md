@@ -18,6 +18,17 @@ A neural machine translation model that translates Python code to C++ using a T5
 pip install -r requirements.txt
 ```
 
+**Note**: If you encounter a `ValueError: Backend should be defined in BACKENDS_MAPPING` error, TensorFlow may be installed but misconfigured. Since this project uses PyTorch, you can uninstall TensorFlow:
+
+```bash
+pip uninstall -y tensorflow tensorflow-cpu tensorflow-gpu
+```
+
+Or run the helper script:
+```bash
+python3 fix_transformers_backend.py
+```
+
 ### 2. Extract Model (if needed)
 
 If you have `final_model.zip`:
