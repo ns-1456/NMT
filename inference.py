@@ -60,7 +60,9 @@ def translate(python_code_str: str) -> str:
         inputs["input_ids"] = inputs["input_ids"][:, :256]
         if "attention_mask" in inputs:
             inputs["attention_mask"] = inputs["attention_mask"][:, :256]
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    # Filter out token_type_ids (T5 doesn't use it)
+    inputs = {k: v.to(device) for k, v in inputs.items() if k != "token_type_ids"}
 
     with torch.no_grad():
         out_ids = model.generate(

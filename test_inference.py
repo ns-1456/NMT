@@ -39,7 +39,8 @@ python_code = "def sum_upto(n):\n    s = 0\n    for i in range(n + 1):\n        
 
 text = f"translate Python to C++: {python_code}"
 inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=256)
-inputs = {k: v.to(device) for k, v in inputs.items()}
+# Filter out token_type_ids (T5 doesn't use it)
+inputs = {k: v.to(device) for k, v in inputs.items() if k != "token_type_ids"}
 
 with torch.no_grad():
     out_ids = model.generate(**inputs, num_beams=4, max_length=512)
